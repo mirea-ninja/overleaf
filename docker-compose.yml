@@ -11,8 +11,11 @@ services:
                 condition: service_healthy
             redis:
                 condition: service_started
+        networks:
+            - proxy
+            - default
         ports:
-            - 80:80
+            - 3001:80
         links:
             - mongo
             - redis
@@ -47,13 +50,15 @@ services:
             # see https://github.com/overleaf/overleaf/issues/695
             TEXMFVAR: /var/lib/sharelatex/tmp/texmf-var
 
-            ## Set for SSL via nginx-proxy
-            #VIRTUAL_HOST: 103.112.212.22
+            ## Set for SSL via nginx-proxy and letsencript
+            VIRTUAL_HOST: 80.90.189.165
+            VIRTUAL_PORT: '3001'
+            LETSENCRYPT_HOST: 80.90.189.165
 
-            # SHARELATEX_SITE_URL: http://sharelatex.mydomain.com
-            # SHARELATEX_NAV_TITLE: Our ShareLaTeX Instance
+            SHARELATEX_SITE_URL: https://80.90.189.165
+            SHARELATEX_NAV_TITLE: 'Mirea Ninja LaTeX'
             # SHARELATEX_HEADER_IMAGE_URL: http://somewhere.com/mylogo.png
-            # SHARELATEX_ADMIN_EMAIL: support@it.com
+            SHARELATEX_ADMIN_EMAIL: valery@verkh.ru
 
             # SHARELATEX_LEFT_FOOTER: '[{"text": "Powered by <a href=\"https://www.sharelatex.com\">ShareLaTeX</a> 2016"},{"text": "Another page I want to link to can be found <a href=\"here\">here</a>"} ]'
             # SHARELATEX_RIGHT_FOOTER: '[{"text": "Hello I am on the Right"} ]'
@@ -110,6 +115,8 @@ services:
             - 27017
         volumes:
             - ~/mongo_data:/data/db
+        networks:
+          - default
         healthcheck:
             test: echo 'db.stats().ok' | mongo localhost:27017/test --quiet
             interval: 10s
@@ -122,6 +129,8 @@ services:
         container_name: redis
         expose:
             - 6379
+        networks:
+          - default
         volumes:
             - ~/redis_data:/data
 
@@ -137,12 +146,42 @@ services:
     # settings. We recommend using a properly managed nginx instance outside of the Overleaf Server Pro setup,
     # but the example here can be used if you'd prefer to run everything with docker-compose
 
-    # nginx-proxy:
-    #     image: jwilder/nginx-proxy
-    #     container_name: nginx-proxy
-    #     ports:
-    #       #- "80:80"
-    #       - "443:443"
-    #     volumes:
-    #       - /var/run/docker.sock:/tmp/docker.sock:ro
-    #       - /home/sharelatex/tmp:/etc/nginx/certs
+    proxy:
+        image: jwilder/nginx-proxy
+        container_name: nginx-proxy
+        ports:
+          - "80:80"
+          - "443:443"
+        volumes:
+          - conf:/etc/nginx/conf.d
+          - vhost:/etc/nginx/vhost.d
+          - dhparam:/etc/nginx/dhparam
+          - certs:/etc/nginx/certs:ro
+          - /var/run/docker.sock:/tmp/docker.sock:ro
+          - /usr/share/nginx/html
+          - acme:/etc/acme.sh
+        networks:
+          - proxy
+        restart: always
+      
+    letsencrypt:
+        image: nginxproxy/acme-companion:latest
+        container_name: letsencrypt
+        volumes_from:
+          - proxy
+        volumes:
+          - certs:/etc/nginx/certs:rw
+          - /var/run/docker.sock:/var/run/docker.sock:ro
+          - acme:/etc/acme.sh
+        restart: always
+
+volumes:
+    conf:
+    vhost:
+    dhparam:
+    certs:
+    acme:
+
+networks:
+    proxy:
+        external: true
