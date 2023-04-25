@@ -216,27 +216,6 @@ const AuthenticationManager = {
       })
     }
     if (typeof email === 'string' && email !== '') {
-      try {
-        const substringError =
-          AuthenticationManager._validatePasswordNotContainsEmailSubstrings(
-            password,
-            email
-          )
-        if (substringError) {
-          Metrics.inc('password-contains-substring-of-email')
-        }
-        const passwordTooSimilarError =
-          AuthenticationManager._validatePasswordNotTooSimilar(password, email)
-        if (passwordTooSimilarError) {
-          Metrics.inc('password-too-similar-to-email')
-        }
-      } catch (error) {
-        logger.error(
-          { error },
-          'error while checking password similarity to email'
-        )
-      }
-      // TODO: remove this check once the password-too-similar checks are active?
       const startOfEmail = email.split('@')[0]
       if (
         password.includes(email) ||
@@ -248,6 +227,23 @@ const AuthenticationManager = {
           info: { code: 'contains_email' },
         })
       }
+      try {
+        const passwordTooSimilarError =
+          AuthenticationManager._validatePasswordNotTooSimilar(password, email)
+        if (passwordTooSimilarError) {
+          Metrics.inc('password-too-similar-to-email')
+          return new InvalidPasswordError({
+            message: 'password is too similar to email address',
+            info: { code: 'too_similar' },
+          })
+        }
+      } catch (error) {
+        logger.error(
+          { error },
+          'error while checking password similarity to email'
+        )
+      }
+      // TODO: remove this check once the password-too-similar checks are active?
     }
     return null
   },
@@ -393,50 +389,60 @@ const AuthenticationManager = {
     const stringsToCheck = [email]
       .concat(email.split(/\W+/))
       .concat(email.split(/@/))
-    let largestSimilarity = 0
-    let err = null
     for (const emailPart of stringsToCheck) {
       if (!_exceedsMaximumLengthRatio(password, MAX_SIMILARITY, emailPart)) {
         const similarity = DiffHelper.stringSimilarity(password, emailPart)
-        const similarityOneDecimalPlace = Math.floor(similarity * 10) / 10
-        largestSimilarity = Math.max(
-          largestSimilarity,
-          similarityOneDecimalPlace
-        )
         if (similarity > MAX_SIMILARITY) {
           logger.warn(
             { email, emailPart, similarity, maxSimilarity: MAX_SIMILARITY },
             'Password too similar to email'
           )
-          err = new Error('password is too similar to email')
+          return new Error('password is too similar to email')
         }
       }
     }
-    Metrics.inc('password-validation-similarity', 1, {
-      similarity: largestSimilarity,
-    })
-    return err
   },
 
-  _validatePasswordNotContainsEmailSubstrings(password, email) {
-    password = password.toLowerCase()
-    email = email.toLowerCase()
-    const chunkLength = 4
-
-    if (email.length < chunkLength) {
-      return
+  getMessageForInvalidPasswordError(error, req) {
+    const errorCode = error?.info?.code
+    const message = {
+      type: 'error',
     }
-
-    let chunk
-    for (let i = 0; i <= email.length - chunkLength; i++) {
-      chunk = email.slice(i, i + chunkLength)
-      if (password.indexOf(chunk) !== -1) {
-        return new InvalidPasswordError({
-          message: 'password contains part of email address',
-          info: { code: 'contains_email' },
+    switch (errorCode) {
+      case 'not_set':
+        message.key = 'password-not-set'
+        message.text = req.i18n.translate('invalid_password_not_set')
+        break
+      case 'invalid_character':
+        message.key = 'password-invalid-character'
+        message.text = req.i18n.translate('invalid_password_invalid_character')
+        break
+      case 'contains_email':
+        message.key = 'password-contains-email'
+        message.text = req.i18n.translate('invalid_password_contains_email')
+        break
+      case 'too_similar':
+        message.key = 'password-too-similar'
+        message.text = req.i18n.translate('invalid_password_too_similar')
+        break
+      case 'too_short':
+        message.key = 'password-too-short'
+        message.text = req.i18n.translate('invalid_password_too_short', {
+          minLength: Settings.passwordStrengthOptions?.length?.min || 8,
         })
-      }
+        break
+      case 'too_long':
+        message.key = 'password-too-long'
+        message.text = req.i18n.translate('invalid_password_too_long', {
+          maxLength: Settings.passwordStrengthOptions?.length?.max || 72,
+        })
+        break
+      default:
+        logger.error({ err: error }, 'Unknown password validation error code')
+        message.text = req.i18n.translate('invalid_password')
+        break
     }
+    return message
   },
 }
 

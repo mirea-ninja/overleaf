@@ -10,9 +10,12 @@
 @gray-lightest: #f0f0f0;
 @white: #ffffff;
 @neutral-20: #e7e9ee;
+@neutral-30: #d0d5dd;
 @neutral-90: #1b222c;
 @neutral-40: #afb5c0;
 @neutral-10: #f4f5f6;
+@neutral-70: #495365;
+@neutral-80: #2f3a4c;
 
 // Styleguide colors
 @ol-blue-gray-0: #f4f5f8;
@@ -231,6 +234,10 @@
 @btn-danger-bg: @ol-red;
 @btn-danger-border: transparent;
 
+@btn-danger-ghost-color: @red-50;
+@btn-danger-ghost-bg: transparent;
+@btn-danger-ghost-border: transparent;
+
 @btn-link-disabled-color: @gray-light;
 
 //== Forms
@@ -404,7 +411,6 @@
 @navbar-border-radius: 0;
 @navbar-padding-horizontal: floor((@grid-gutter-width / 2));
 @navbar-padding-vertical: ((@navbar-height - @line-height-computed) / 2);
-@navbar-collapse-max-height: 380px;
 
 @navbar-default-color: #fff;
 @navbar-default-bg: @ol-blue-gray-6;
@@ -933,8 +939,10 @@
 @btn-border-bottom-width: 0;
 
 // Cards
-@card-box-shadow: none;
 @card-border-radius: @border-radius-base-new;
+@card-gray-bg-color: @neutral-10; // only some variations of cards
+@card-box-shadow: 0px 4px 12px rgba(30, 37, 48, 0.12),
+  0px 2px 4px rgba(30, 37, 48, 0.08); // only some variations of cards
 
 // Project table
 @structured-list-link-color: @ol-blue;
@@ -1160,3 +1168,9 @@
 
 @mobile-action-element-width: 48px;
 @mobile-action-element-height: @mobile-action-element-width;
+
+// React History
+@history-react-header-bg: @neutral-80;
+@history-react-header-color: #fff;
+@history-react-separator-color: @neutral-80;
+@history-main-bg: #fff;

@@ -227,6 +227,38 @@ module.exports = DocManager = {
   },
 
   updateDoc(projectId, docId, lines, version, ranges, callback) {
+    DocManager._tryUpdateDoc(
+      projectId,
+      docId,
+      lines,
+      version,
+      ranges,
+      (err, modified, rev) => {
+        if (err && err instanceof Errors.DocRevValueError) {
+          // Another updateDoc call was racing with ours.
+          // Retry once in a bit.
+          logger.warn(
+            { projectId, docId, err },
+            'detected concurrent updateDoc call'
+          )
+          setTimeout(() => {
+            DocManager._tryUpdateDoc(
+              projectId,
+              docId,
+              lines,
+              version,
+              ranges,
+              callback
+            )
+          }, 100 + Math.random() * 100)
+        } else {
+          callback(err, modified, rev)
+        }
+      }
+    )
+  },
+
+  _tryUpdateDoc(projectId, docId, lines, version, ranges, callback) {
     if (callback == null) {
       callback = function () {}
     }
@@ -263,6 +295,16 @@ module.exports = DocManager = {
           updateVersion = true
           updateRanges = true
         } else {
+          if (doc.version > version) {
+            // Reject update when the version was decremented.
+            // Potential reasons: racing flush, broken history.
+            return callback(
+              new Errors.DocVersionDecrementedError('rejecting stale update', {
+                updateVersion: version,
+                flushedVersion: doc.version,
+              })
+            )
+          }
           updateLines = !_.isEqual(doc.lines, lines)
           updateVersion = doc.version !== version
           updateRanges = RangeManager.shouldUpdateRanges(doc.ranges, ranges)
@@ -287,6 +329,7 @@ module.exports = DocManager = {
             return MongoManager.upsertIntoDocCollection(
               projectId,
               docId,
+              doc?.rev,
               update,
               cb
             )

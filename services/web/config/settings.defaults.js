@@ -97,6 +97,7 @@ module.exports = {
       process.env.MONGO_CONNECTION_STRING ||
       process.env.MONGO_URL ||
       `mongodb://${process.env.MONGO_HOST || '127.0.0.1'}/sharelatex`,
+    hasSecondaries: process.env.MONGO_HAS_SECONDARIES === 'true',
   },
 
   redis: {
@@ -233,6 +234,11 @@ module.exports = {
     // For legacy reasons, we need to populate the below objects.
     v1: {},
     recurly: {},
+  },
+
+  jwt: {
+    key: process.env.OT_JWT_AUTH_KEY,
+    algorithm: process.env.OT_JWT_AUTH_ALG || 'HS256',
   },
 
   splitTests: [],
@@ -663,7 +669,7 @@ module.exports = {
     enabled: false,
   },
 
-  compileBodySizeLimitMb: process.env.COMPILE_BODY_SIZE_LIMIT_MB || 5,
+  compileBodySizeLimitMb: process.env.COMPILE_BODY_SIZE_LIMIT_MB || 7,
 
   textExtensions: defaultTextExtensions.concat(
     parseTextExtensions(process.env.ADDITIONAL_TEXT_EXTENSIONS)
@@ -794,6 +800,7 @@ module.exports = {
     importProjectFromGithubModalWrapper: [],
     importProjectFromGithubMenu: [],
     editorLeftMenuSync: [],
+    editorLeftMenuManageTemplate: [],
   },
 
   moduleImportSequence: [

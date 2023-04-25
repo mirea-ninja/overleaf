@@ -192,14 +192,16 @@ function NewProjectButton({
           >
             {t('upload_project')}
           </MenuItem>
-          <ImportProjectFromGithubMenu
-            onClick={e =>
-              handleModalMenuClick(e, {
-                modalVariant: 'import_from_github',
-                dropdownMenuEvent: 'import-from-github',
-              })
-            }
-          />
+          {ImportProjectFromGithubMenu && (
+            <ImportProjectFromGithubMenu
+              onClick={e =>
+                handleModalMenuClick(e, {
+                  modalVariant: 'import_from_github',
+                  dropdownMenuEvent: 'import-from-github',
+                })
+              }
+            />
+          )}
           {portalTemplates?.length > 0 ? (
             <>
               <MenuItem divider />
@@ -221,7 +223,7 @@ function NewProjectButton({
           ) : null}
           <MenuItem divider />
           <MenuItem header>{t('templates')}</MenuItem>
-          {templateLinks.map((templateLink, index) => (
+          {templateLinks?.map((templateLink, index) => (
             <MenuItem
               key={`new-project-button-template-${index}`}
               href={templateLink.url}
